@@ -1,0 +1,5 @@
+venv/
+CLAUDE.md
+data/
+*.pt
+test.py
