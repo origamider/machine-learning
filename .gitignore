@@ -2,4 +2,6 @@ venv/
 CLAUDE.md
 data/
 *.pt
+*.pth
 test.py
+material/
