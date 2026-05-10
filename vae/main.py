@@ -56,15 +56,19 @@ class VAE(nn.Module):
         x_hat = self.decoder(z)
         return (self.mseloss(x_hat,x) * 0.5 - torch.sum(1 + torch.log(sigma ** 2) - mu ** 2 - sigma ** 2) * 0.5) / len(x)
 
-input_dim = 784
-hidden_dim = 32
-latent_dim = 2
-batch_size = 64
-num_epochs = 30
+#ハイパーパラメータ
+input_dim = 784 #いじっちゃダメ。MNIST画像は28*28個の数字(0以上1以下？)でできている。
+hidden_dim = 32 #いじってOK。エンコーダ、デコーダの隠れ層の次元。
+latent_dim = 2  #いじってOK。潜在変数zの次元。
+batch_size = 64 #いじってOK。機械学習時にbatch_size分取り出してミニバッチ学習。
+num_epochs = 30 #いじってOK。機械学習回数。
+
+#前処理。MNIST画像をTensor型に直し、形状(28,28)を(784)のように、1列にする。
 transform = transforms.Compose([
     transforms.ToTensor(),
     transforms.Lambda(torch.flatten)
 ])
+# MNISTデータの使用(機械学習用)
 dataset = datasets.MNIST(
     root = "./data/",
     train = True,
@@ -77,7 +81,7 @@ dataloader = torch.utils.data.DataLoader(
     shuffle=True
 )
 model = VAE(input_dim,hidden_dim,latent_dim)
-optimizer = optim.Adam(model.parameters())
+optimizer = optim.Adam(model.parameters()) #最適化関数はAdamを使用。他にもSGDとかでもいけると思う。
 
 
 # 学習
@@ -95,12 +99,29 @@ for epoch in range(num_epochs):
     loss_avg = loss_sum / ct
     print(loss_avg)
 
+# MNISTデータの使用(実験用)
 test_dataset = datasets.MNIST(
     root = "./data/",
     train = False,
     download= True,
     transform=transform
 )
+
+# 実験1:MNIST画像と復元後の画像を比較してみよう。上がオリジナル、下が復元後の画像。
+n = 8
+x = torch.stack([test_dataset[i][0] for i in range(n)])
+label = np.array([test_dataset[i][1] for i in range(n)])
+mu, sigma = model.encoder(x)
+z = create_z(mu, sigma)
+generate_x = model.decoder(z)
+fig, axes = plt.subplots(2,n,figsize=(8,4))
+for i in range(n):
+    axes[0][i].imshow(x[i].view(28,28).detach().numpy(),cmap="gray")
+    axes[1][i].imshow(generate_x[i].view(28,28).detach().numpy(),cmap="gray")
+    axes[0][i].axis("off")
+    axes[1][i].axis("off")
+plt.show()
+
 xs = torch.stack([test_dataset[i][0] for i in range(len(test_dataset))])
 labels = np.array([test_dataset[i][1] for i in range(len(test_dataset))])
 
@@ -108,7 +129,8 @@ mu, sigma = model.encoder(xs)
 zs = create_z(mu, sigma)
 zs = zs.detach().numpy()
 
-# 0~9までの数字に該当する潜在変数zを出力する
+# 実験2:0~9までの数字に該当する潜在変数zを出力する
+# 注意:latent_dim=2にしてね。
 for num in range(10):
     index = (labels == num)
     plt.scatter(zs[index,0],zs[index,1],label=str(num))
@@ -118,6 +140,8 @@ plt.ylabel("z2")
 plt.title("潜在変数zを2次元上で表示")
 plt.show()
 
+
+# 実験3:潜在変数から復元画像xを求める
 xs = torch.linspace(-3,3,20)
 ys = torch.linspace(3,-3,20)
 grid_y, grid_x = torch.meshgrid(ys,xs)
