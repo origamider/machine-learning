@@ -2,6 +2,7 @@ from module import *
 import numpy as np
 import ptb
 from janome.tokenizer import Tokenizer
+import re
 
 class RnnlmGen(RevisedRnnlm):
     def generate(self, start_id, skip_ids=None, sample_size=100):
@@ -20,11 +21,23 @@ class RnnlmGen(RevisedRnnlm):
         
         return word_ids
 
-with open('wagahaiwa_nekodearu.txt', encoding='shift_jis') as f:
-    text = f.read()
+def load_wagahaiwa_nekodearu():
+    with open('wagahaiwa_nekodearu.txt', encoding='shift_jis') as f:
+        text = f.read()
+    text = re.split(r'-{20,}\n', text)[2]       # ヘッダ除去: 2本目の区切り線より後ろが本文
+    text = re.split(r'底本：', text)[0]          # フッタ除去: 「底本：」より前が本文
+    text = re.sub(r'※?［＃[^］]*］', '', text)   # 入力者注（orphanになる※も一括で）
+    text = re.sub(r'《[^》]*》', '', text)        # ルビ
+    text = text.replace('｜', '')                # ルビ開始記号（正規表現不要）
+    text = re.sub(r'〔[^〕]*〕', '', text)        # アクセント分解された欧文
+    text = re.sub(r'[ 　]', '', text)            # 空白
+    text = re.sub(r'\n+', '\n', text).strip()    # 連続改行の圧縮
+    return text
 
+text  = load_wagahaiwa_nekodearu()
+# print(text[15000:20000])
 t = Tokenizer()
-words = list(t.tokenize(text, wakati=True))
+words = list(t.tokenize(text, wakati=True)) # 形態素解析
 word_to_id, id_to_word = {}, {}
 for word in words:
     if word not in word_to_id:
@@ -35,15 +48,15 @@ for word in words:
 corpus = np.array([word_to_id[w] for w in words])
 
 # 先頭50個の単語のidを出力
-print(words[:50])
 vocab_size = len(word_to_id)
 corpus_size = len(corpus)
 
 model = RnnlmGen(vocab_size=vocab_size,wordvec_size=650,hidden_size=650)
-model.load_params('lstm_wagahaiwa_nekodearu.pkl')
-start_word = '私'
+model.load_params('lstm_wagahaiwa_nekodearu.pkl') # trainLSTM.pyで学習した結果、作成されたpklを使用。
+# ----------ここに最初の文字を入れてね。(文章に登場するやつ限定)(例えば、'私','真似','主人')--------------
+start_word = '無法'
+# -------------------------
 start_id = word_to_id[start_word]
-print(f"start_id = {start_id}")
 skip_ids = None
 word_ids = model.generate(start_id,skip_ids)
 text = ' '.join([id_to_word[i] for i in word_ids])

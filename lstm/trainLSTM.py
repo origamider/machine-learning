@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import ptb
 from module import *
 from janome.tokenizer import Tokenizer
+import re
 
 wordvec_size = 650
 hidden_size = 650
@@ -16,11 +17,20 @@ max_grad = 0.25
 batch_size = 20
 dropout = 0.5
 
-# corpus, word_to_id, id_to_word = ptb.load_data('train')
-# corpus_test, _, _ = ptb.load_data('test')
-with open('wagahaiwa_nekodearu.txt', encoding='shift_jis') as f:
-    text = f.read()
+def load_wagahaiwa_nekodearu():
+    with open('wagahaiwa_nekodearu.txt', encoding='shift_jis') as f:
+        text = f.read()
+    text = re.split(r'-{20,}\n', text)[2]       # ヘッダ除去: 2本目の区切り線より後ろが本文
+    text = re.split(r'底本：', text)[0]          # フッタ除去: 「底本：」より前が本文
+    text = re.sub(r'※?［＃[^］]*］', '', text)   # 入力者注（orphanになる※も一括で）
+    text = re.sub(r'《[^》]*》', '', text)        # ルビ
+    text = text.replace('｜', '')                # ルビ開始記号（正規表現不要）
+    text = re.sub(r'〔[^〕]*〕', '', text)        # アクセント分解された欧文
+    text = re.sub(r'[ 　]', '', text)            # 空白
+    text = re.sub(r'\n+', '\n', text).strip()    # 連続改行の圧縮
+    return text
 
+text = load_wagahaiwa_nekodearu()
 t = Tokenizer()
 words = list(t.tokenize(text, wakati=True))
 word_to_id, id_to_word = {}, {}
