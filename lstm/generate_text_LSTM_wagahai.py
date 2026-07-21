@@ -54,7 +54,7 @@ corpus_size = len(corpus)
 model = RnnlmGen(vocab_size=vocab_size,wordvec_size=650,hidden_size=650)
 model.load_params('lstm_wagahaiwa_nekodearu.pkl') # trainLSTM.pyで学習した結果、作成されたpklを使用。
 # ----------ここに最初の文字を入れてね。(文章に登場するやつ限定)(例えば、'私','真似','主人')--------------
-start_word = '無法'
+start_word = '主人'
 # -------------------------
 start_id = word_to_id[start_word]
 skip_ids = None
